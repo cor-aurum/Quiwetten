@@ -1,0 +1,89 @@
+@let q = question();
+
+<div class="progress" aria-label="Fortschritt">
+  @for (i of dots(); track i) {
+    <span class="dot" [class.done]="i < game.index()" [class.current]="i === game.index()"></span>
+  }
+  <span class="progress-label">Frage {{ game.index() + 1 }} von {{ game.total() }}</span>
+</div>
+
+<section class="question card pop-in">
+  <span class="badge">{{ q.type === 'choice' ? '🔤 Auswahlfrage' : '🔢 Schätzfrage' }}</span>
+  <h2>{{ q.text }}</h2>
+  @if (q.type === 'choice') {
+    <ol class="options">
+      @for (opt of q.options; track $index; let i = $index) {
+        <li
+          [class.correct]="game.step() === 'result' && game.lastResult()?.correct === i"
+          [class.selectable]="game.step() === 'resolving'"
+          [class.selected]="game.step() === 'resolving' && correct() === i"
+          (click)="game.step() === 'resolving' && correct.set(i)"
+        >
+          <span class="letter">{{ letters[i] }}</span>{{ opt }}
+        </li>
+      }
+    </ol>
+  } @else if (q.unit) {
+    <p class="unit">Gesucht in: <b>{{ q.unit }}</b></p>
+  }
+</section>
+
+<section class="teams" [style.--cols]="game.teamColumns()">
+  @for (team of game.teams(); track team.id) {
+    <app-team-panel [team]="team" [question]="q" [outcome]="outcomeFor(team.id)" />
+  }
+</section>
+
+<section class="actions card">
+  @switch (game.step()) {
+    @case ('betting') {
+      <p>Alle Teams setzen und tippen. Insgesamt im Topf: <b>{{ totalBet() }}</b> Punkte 💰</p>
+      <div class="buttons">
+        <button class="btn btn-ghost btn-small" type="button" (click)="skip()">Frage überspringen</button>
+        <button class="btn btn-primary btn-big" type="button" [disabled]="!game.canLock()" (click)="lock()">
+          🔒 Nichts geht mehr!
+        </button>
+      </div>
+      @if (!game.canLock()) {
+        <p class="hint">Jedes Team mit Einsatz braucht noch einen Tipp.</p>
+      }
+    }
+    @case ('resolving') {
+      @if (q.type === 'choice') {
+        <p>🧑‍🏫 Spielleitung: Klick oben auf die <b>richtige Antwort</b>, sobald sie feststeht.</p>
+      } @else {
+        <label class="correct-input">
+          🧑‍🏫 Spielleitung: Das richtige Ergebnis ist
+          <input
+            type="text"
+            inputmode="decimal"
+            placeholder="?"
+            [value]="correct() ?? ''"
+            (input)="setCorrectEstimate($any($event.target).value)"
+            (keyup.enter)="resolve()"
+          />
+          {{ q.unit }}
+        </label>
+      }
+      <div class="buttons">
+        <button class="btn btn-small" type="button" (click)="game.unlockBets()">↩ Einsätze ändern</button>
+        <button class="btn btn-pink btn-big" type="button" [disabled]="correct() === null" (click)="resolve()">
+          ✨ Auflösen!
+        </button>
+      </div>
+    }
+    @case ('result') {
+      <p class="solution pop-in">Richtig war: <b>{{ correctLabel() }}</b></p>
+      <div class="buttons">
+        <button class="btn btn-small" type="button" (click)="undo()">✏️ Ups, korrigieren</button>
+        <button class="btn btn-primary btn-big" type="button" (click)="next()">
+          @if (game.isLast()) {
+            🏆 Zur Siegerehrung!
+          } @else {
+            Nächste Frage ➜
+          }
+        </button>
+      </div>
+    }
+  }
+</section>

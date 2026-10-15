@@ -1,0 +1,197 @@
+<nav class="steps" aria-label="Schritte">
+  <span class="step active">① Vorbereitung</span>
+  <span class="arrow">➜</span>
+  <button class="step" type="button" [disabled]="playableCount() === 0" (click)="next()">② Teams</button>
+</nav>
+
+<p class="secret">🤫 Nur für die Spielleitung: Hier stehen die Fragen. Bildschirm noch nicht zeigen!</p>
+
+<section class="card config">
+  <label class="field">
+    <span>📝 Titel des Quiz</span>
+    <input
+      maxlength="60"
+      [placeholder]="defaultTitle"
+      [value]="game.title()"
+      (input)="game.title.set($any($event.target).value)"
+    />
+  </label>
+  <label class="field">
+    <span>👨‍👩‍👧‍👦 So setzen sich die Teams zusammen <small>(optional, steht groß auf der Team-Seite)</small></span>
+    <textarea
+      rows="3"
+      placeholder="z. B. In jedem Team ist mindestens ein Kind und ein Erwachsener."
+      [value]="game.teamInfo()"
+      (input)="game.teamInfo.set($any($event.target).value)"
+    ></textarea>
+  </label>
+  <div class="mercy" [class.off]="!game.mercy().enabled">
+    <label class="switch">
+      <input
+        type="checkbox"
+        aria-label="Rettungsring an oder aus"
+        [checked]="game.mercy().enabled"
+        (change)="setMercy({ enabled: $any($event.target).checked })"
+      />
+      <span class="slider"></span>
+    </label>
+    <span>
+      🛟 <b>Rettungsring:</b> Wer vor einer neuen Frage weniger als
+      <input
+        type="number"
+        min="1"
+        max="100"
+        aria-label="Rettungsring-Punkte"
+        [value]="game.mercy().points"
+        [disabled]="!game.mercy().enabled"
+        (change)="setMercy({ points: $any($event.target).valueAsNumber })"
+      />
+      Punkte hat, wird wieder auf so viele aufgefüllt.
+    </span>
+  </div>
+</section>
+
+<section>
+  <div class="questions-head">
+    <h2 class="section-title">Die Fragen ({{ game.questions().length }})</h2>
+    <div class="tools">
+      <button
+        class="btn btn-small"
+        type="button"
+        title="Übersicht mit Fragen, Beschreibungen und Material für die Spielleitung"
+        [disabled]="playableCount() === 0 || pdfBusy()"
+        (click)="exportPdf()"
+      >
+        📄 PDF für die Spielleitung
+      </button>
+      <button class="btn btn-small" type="button" (click)="exportQuiz()">💾 Exportieren</button>
+      <button class="btn btn-small" type="button" (click)="file.click()">📂 Importieren</button>
+      <input #file type="file" accept="application/json,.json" hidden (change)="importQuiz(file)" />
+      <button class="btn btn-small" type="button" (click)="loadSamples()">✨ Beispielfragen</button>
+    </div>
+  </div>
+  @if (importError(); as err) {
+    <p class="error">😬 {{ err }}</p>
+  }
+
+  <ol class="questions">
+    @for (q of game.questions(); track q.id; let i = $index, first = $first, last = $last) {
+      <li class="question card">
+        <div class="q-head">
+          <span class="q-number">{{ i + 1 }}</span>
+          <div class="type-switch" role="radiogroup" aria-label="Fragetyp">
+            <button type="button" [class.active]="q.type === 'choice'" (click)="switchType(q, 'choice')">
+              🔤 Auswahl
+            </button>
+            <button type="button" [class.active]="q.type === 'estimate'" (click)="switchType(q, 'estimate')">
+              🔢 Schätzung
+            </button>
+          </div>
+          <div class="q-actions">
+            <button type="button" title="Nach oben" [disabled]="first" (click)="move(i, -1)">⬆️</button>
+            <button type="button" title="Nach unten" [disabled]="last" (click)="move(i, 1)">⬇️</button>
+            <button type="button" title="Löschen" (click)="remove(q.id)">🗑️</button>
+          </div>
+        </div>
+        <input
+          class="q-text"
+          placeholder="Wie lautet die Frage?"
+          [value]="q.text"
+          (input)="update(q.id, { text: $any($event.target).value })"
+        />
+        @if (q.type === 'choice') {
+          <div class="options">
+            @for (opt of q.options; track $index; let j = $index) {
+              <div class="option">
+                <span class="letter">{{ 'ABCDEFGH'[j] }}</span>
+                <input
+                  placeholder="Antwortmöglichkeit"
+                  [value]="opt"
+                  (input)="setOption(q, j, $any($event.target).value)"
+                />
+                <button type="button" title="Entfernen" [disabled]="q.options.length <= 2" (click)="removeOption(q, j)">
+                  ✖
+                </button>
+              </div>
+            }
+            @if (q.options.length < 8) {
+              <button class="btn btn-small btn-ghost" type="button" (click)="addOption(q)">+ Möglichkeit</button>
+            }
+          </div>
+        } @else {
+          <label class="unit">
+            Einheit (optional)
+            <input
+              placeholder="z. B. Stück, Sekunden, cm"
+              [value]="q.unit"
+              (input)="update(q.id, { unit: $any($event.target).value })"
+            />
+          </label>
+        }
+        <details class="notes" [open]="hasNotes(q)">
+          <summary>
+            🗒️ Notizen für die Spielleitung
+            @if (materialCount(q) > 0) {
+              <span class="pill">🧺 {{ materialCount(q) }}</span>
+            }
+            <small>(im Spiel unsichtbar)</small>
+          </summary>
+          <div class="notes-body">
+            <label>
+              Beschreibung
+              <textarea
+                rows="2"
+                placeholder="Ablauf, Aufbau, worauf achten …"
+                [value]="q.description ?? ''"
+                (input)="update(q.id, { description: $any($event.target).value })"
+              ></textarea>
+            </label>
+            <label>
+              Material <small>(eine Zeile pro Teil)</small>
+              <textarea
+                rows="3"
+                placeholder="z. B. Stoppuhr"
+                [value]="(q.materials ?? []).join('\n')"
+                (input)="setMaterials(q.id, $any($event.target).value)"
+              ></textarea>
+            </label>
+          </div>
+        </details>
+      </li>
+    } @empty {
+      <li class="empty">Noch keine Fragen – leg los! 👇</li>
+    }
+  </ol>
+
+  <div class="add">
+    <button class="btn" type="button" (click)="add('choice')">+ Auswahlfrage</button>
+    <button class="btn" type="button" (click)="add('estimate')">+ Schätzfrage</button>
+  </div>
+</section>
+
+@if (packingList().length > 0) {
+  <section class="card packing">
+    <h2 class="section-title">🧺 Packliste für das ganze Quiz</h2>
+    <ul>
+      @for (item of packingList(); track item.name) {
+        <li>
+          {{ item.name }} <small>(Frage {{ item.questions.join(', ') }})</small>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+<div class="start">
+  <button class="btn btn-primary btn-big" type="button" [disabled]="playableCount() === 0" (click)="next()">
+    Weiter zu den Teams ➜
+  </button>
+  @if (playableCount() === 0) {
+    <p class="hint">Es braucht mindestens eine fertige Frage.</p>
+  } @else if (playableCount() < game.questions().length) {
+    <p class="hint">
+      {{ game.questions().length - playableCount() }} Frage(n) ohne Text oder mit weniger als zwei
+      Antwortmöglichkeiten werden übersprungen.
+    </p>
+  }
+</div>

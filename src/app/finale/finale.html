@@ -1,0 +1,74 @@
+<app-confetti />
+
+<h2 class="title wiggle">🏆 Die große Siegerehrung 🏆</h2>
+
+<ol class="ranking">
+  @for (group of groups(); track group.place; let i = $index) {
+    <li
+      class="place"
+      [class.hidden]="!isRevealed(i)"
+      [class.shaking]="busy() && group === nextGroup()"
+      [class.winner]="group.place === 1 && isRevealed(i)"
+    >
+      @if (isRevealed(i)) {
+        <div class="medal pop-in">{{ medal(group.place) }}</div>
+        <div class="teams">
+          @for (team of group.teams; track team.id) {
+            <div class="team pop-in" [attr.data-team]="team.id">
+              <span class="emoji">{{ team.emoji }}</span>
+              <span class="name">{{ team.name }}</span>
+              <span class="points"><app-counter [value]="team.points" [from]="0" [duration]="1500" /> Punkte</span>
+            </div>
+          }
+        </div>
+        <div class="place-label">Platz {{ group.place }}</div>
+      } @else {
+        <div class="medal">❓</div>
+        <div class="teams mystery">Wer ist es nur …?</div>
+        <div class="place-label">Platz {{ group.place }}</div>
+      }
+    </li>
+  }
+</ol>
+
+@if (done()) {
+  <div class="cheer pop-in">
+    @if (groups()[0].teams.length > 1) {
+      <p>Gleichstand an der Spitze! Gleich {{ groups()[0].teams.length }} Siegerteams! 🎊</p>
+    } @else {
+      <p>Herzlichen Glückwunsch, {{ groups()[0].teams[0].name }}! 🎊</p>
+    }
+    <div class="buttons">
+      <button class="btn btn-big btn-primary" type="button" (click)="playAgain()">🔁 Nochmal spielen</button>
+      <button class="btn" type="button" (click)="game.backToSetup()">⚙️ Zurück zum Start</button>
+    </div>
+  </div>
+} @else {
+  <div class="buttons">
+    <button class="btn btn-big btn-pink" type="button" [disabled]="busy()" (click)="revealNext()">
+      @if (busy()) {
+        🥁 Trommelwirbel …
+      } @else if (nextGroup().place === 1) {
+        👑 Und der Sieger ist …
+      } @else {
+        🥁 Wer ist auf Platz {{ nextGroup().place }}?
+      }
+    </button>
+  </div>
+}
+
+@if (countdown(); as n) {
+  <div class="countdown">
+    @switch (n) {
+      @case (3) {
+        <span class="n">3</span>
+      }
+      @case (2) {
+        <span class="n">2</span>
+      }
+      @case (1) {
+        <span class="n">1</span>
+      }
+    }
+  </div>
+}

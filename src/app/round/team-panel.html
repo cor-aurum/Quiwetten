@@ -1,0 +1,107 @@
+<header>
+  <span class="emoji">{{ team().emoji }}</span>
+  <h3>{{ team().name }}</h3>
+</header>
+
+<div class="points">
+  <app-counter [value]="team().points" />
+  <small>Punkte</small>
+  @if (step() === 'result' && outcome(); as o) {
+    @if (o.delta !== 0) {
+      <span class="delta pop-in" [class.plus]="o.delta > 0" [class.minus]="o.delta < 0">
+        {{ o.delta > 0 ? '+' : '' }}{{ o.delta }}
+      </span>
+    }
+  }
+</div>
+
+@switch (step()) {
+  @case ('betting') {
+    @if (rescued()) {
+      <p class="rescued pop-in">🛟 Rettungsring! Aufgefüllt auf {{ game.mercy().points }} Punkte.</p>
+    }
+    @if (broke()) {
+      <p class="broke">Keine Punkte mehr 😢<br />Diese Runde zuschauen!</p>
+    } @else {
+      <div class="bet">
+        <label>Einsatz</label>
+        <div class="stepper">
+          <button type="button" aria-label="Weniger" (click)="setAmount(bet().amount - 5)">−</button>
+          <input
+            type="number"
+            min="0"
+            [max]="team().points"
+            [value]="bet().amount"
+            (change)="setAmount($any($event.target).valueAsNumber)"
+          />
+          <button type="button" aria-label="Mehr" (click)="setAmount(bet().amount + 5)">+</button>
+        </div>
+        <div class="quick">
+          @for (q of quickBets(); track q.label) {
+            <button type="button" [class.active]="bet().amount === q.value" (click)="setAmount(q.value)">
+              {{ q.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="answer" [class.missing]="missingAnswer()">
+        <label>Tipp</label>
+        @if (question().type === 'choice') {
+          <div class="choices">
+            @for (opt of $any(question()).options; track $index; let i = $index) {
+              <button
+                type="button"
+                [class.active]="bet().answer === i"
+                [title]="opt"
+                (click)="chooseOption(i)"
+              >
+                {{ letters[i] }}
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="estimate">
+            <input
+              type="text"
+              inputmode="decimal"
+              placeholder="Schätzung"
+              [value]="bet().answer ?? ''"
+              (input)="setEstimate($any($event.target).value)"
+            />
+            <span>{{ $any(question()).unit }}</span>
+          </div>
+        }
+      </div>
+    }
+  }
+  @case ('resolving') {
+    <div class="locked">
+      <div>🔒 Einsatz: <b>{{ bet().amount }}</b></div>
+      <div>🎯 Tipp: <b>{{ answerLabel() }}</b></div>
+    </div>
+  }
+  @case ('result') {
+    @if (outcome(); as o) {
+      <div class="locked">
+        <div>🎯 Tipp: <b>{{ answerLabel() }}</b></div>
+        @if (o.distance !== undefined) {
+          <div>📏 Abstand: <b>{{ o.distance }}</b> · Platz {{ o.rank }}</div>
+        }
+        @if (o.bet > 0) {
+          <div class="verdict" [class.win]="o.delta > 0" [class.lose]="o.delta < 0">
+            @if (o.factor >= 2) {
+              Super! Einsatz verdoppelt 🎉
+            } @else if (o.factor === 0) {
+              Oh nein, Einsatz weg 🙈
+            } @else {
+              {{ o.bet }} × {{ formatFactor(o.factor) }} zurück
+            }
+          </div>
+        } @else {
+          <div class="verdict">Nichts gesetzt 😴</div>
+        }
+      </div>
+    }
+  }
+}

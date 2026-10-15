@@ -1,0 +1,85 @@
+<nav class="steps" aria-label="Schritte">
+  <button class="step" type="button" title="Achtung: zeigt die Fragen" (click)="back()">① Vorbereitung</button>
+  <span class="arrow">➜</span>
+  <span class="step active">② Teams</span>
+</nav>
+
+@if (teamInfo(); as info) {
+  <section class="team-info card pop-in">
+    <span class="team-info-icon">👨‍👩‍👧‍👦</span>
+    <p>{{ info }}</p>
+  </section>
+}
+
+<section>
+  <div class="teams-head">
+    <h2 class="section-title">Die Teams</h2>
+    <div class="count" role="radiogroup" aria-label="Anzahl der Teams">
+      <span>Wie viele Teams?</span>
+      @for (n of teamCounts; track n) {
+        <button
+          type="button"
+          role="radio"
+          [attr.aria-checked]="game.teams().length === n"
+          [class.active]="game.teams().length === n"
+          (click)="setTeamCount(n)"
+        >
+          {{ n }}
+        </button>
+      }
+    </div>
+  </div>
+  <div class="teams" [style.--cols]="game.teamColumns()">
+    @for (team of game.teams(); track team.id) {
+      <div class="team card" [attr.data-team]="team.id">
+        <button
+          class="emoji"
+          type="button"
+          title="Maskottchen ändern"
+          (click)="emojiPickerFor.set(emojiPickerFor() === team.id ? null : team.id)"
+        >
+          {{ team.emoji }}
+        </button>
+        <input
+          [value]="team.name"
+          maxlength="24"
+          aria-label="Teamname"
+          (input)="rename(team.id, $any($event.target).value)"
+        />
+        @if (emojiPickerFor() === team.id) {
+          <div class="emoji-picker pop-in">
+            @for (e of emojis; track e) {
+              <button type="button" (click)="pickEmoji(team.id, e)">{{ e }}</button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>
+
+<section class="intro card">
+  <h2>So geht's 🎲</h2>
+  <ul>
+    <li>Jedes Team startet mit <b>100 Punkten</b>. Es warten <b>{{ playableCount() }} Fragen</b> auf euch.</li>
+    <li>Bei jeder Frage setzt jedes Team Punkte auf seinen Tipp.</li>
+    <li><b>Auswahlfrage:</b> richtig getippt = Einsatz verdoppelt, falsch = Einsatz weg.</li>
+    <li>
+      <b>Schätzfrage:</b> Wer am nächsten dran ist, verdoppelt den Einsatz. Wer am weitesten weg
+      liegt, verliert ihn. Alle dazwischen bekommen je nach Abstand etwas dazwischen zurück.
+    </li>
+    <li>Die richtige Antwort trägt die Spielleitung erst ein, wenn sie feststeht.</li>
+    @if (game.mercy().enabled) {
+      <li>
+        🛟 <b>Rettungsring:</b> Wer vor einer neuen Frage weniger als {{ game.mercy().points }} Punkte
+        hat, bekommt wieder {{ game.mercy().points }}. So fliegt niemand raus.
+      </li>
+    }
+  </ul>
+</section>
+
+<div class="start">
+  <button class="btn btn-primary btn-big wiggle" type="button" [disabled]="playableCount() === 0" (click)="start()">
+    🎉 Spiel starten
+  </button>
+</div>
