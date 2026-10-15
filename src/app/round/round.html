@@ -17,7 +17,10 @@
           [class.correct]="game.step() === 'result' && game.lastResult()?.correct === i"
           [class.selectable]="game.step() === 'resolving'"
           [class.selected]="game.step() === 'resolving' && correct() === i"
-          (click)="game.step() === 'resolving' && correct.set(i)"
+          [attr.role]="game.step() === 'resolving' ? 'button' : null"
+          [attr.tabindex]="game.step() === 'resolving' ? 0 : null"
+          (click)="chooseCorrect(i)"
+          (keydown.enter)="chooseCorrect(i)"
         >
           <span class="letter">{{ letters[i] }}</span>{{ opt }}
         </li>
@@ -50,7 +53,10 @@
     }
     @case ('resolving') {
       @if (q.type === 'choice') {
-        <p>🧑‍🏫 Spielleitung: Klick oben auf die <b>richtige Antwort</b>, sobald sie feststeht.</p>
+        <p>
+          🧑‍🏫 Spielleitung: Klick oben auf die <b>richtige Antwort</b>, sobald sie feststeht – dann
+          wird sofort aufgelöst.
+        </p>
       } @else {
         <label class="correct-input">
           🧑‍🏫 Spielleitung: Das richtige Ergebnis ist
@@ -67,9 +73,11 @@
       }
       <div class="buttons">
         <button class="btn btn-small" type="button" (click)="game.unlockBets()">↩ Einsätze ändern</button>
-        <button class="btn btn-pink btn-big" type="button" [disabled]="correct() === null" (click)="resolve()">
-          ✨ Auflösen!
-        </button>
+        @if (q.type === 'estimate') {
+          <button class="btn btn-pink btn-big" type="button" [disabled]="correct() === null" (click)="resolve()">
+            ✨ Auflösen!
+          </button>
+        }
       </div>
     }
     @case ('result') {

@@ -50,6 +50,15 @@ export class Round {
     this.correct.set(Number.isFinite(value) ? value : null);
   }
 
+  /** Auswahlfrage: Der Klick auf die richtige Antwort löst direkt auf. */
+  protected chooseCorrect(index: number): void {
+    if (this.game.step() !== 'resolving') {
+      return;
+    }
+    this.correct.set(index);
+    this.resolve();
+  }
+
   protected resolve(): void {
     const correct = this.correct();
     if (correct === null) {
